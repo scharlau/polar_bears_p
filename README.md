@@ -25,29 +25,80 @@ We will use Flask (https://flask.palletsprojects.com/en/1.1.x/) as our web frame
 
 And that will install flask with its associated dependencies. We can now start to build the application.
 
-### We need to add a database
+### We need to parse a csv file and add the data to a database
 The goal is to have the polar bear details on the website, which means we need to put the spreadsheet data into a database. There are a range of options for this, so we'll pick the easiest one for now, and point you in the direction of other options at the end.
+
+We'll start with reading the csv file as that is simple. Put this code into a file called 'parse_csv.py'. This assumes that you put the whole directory (folder) of polar bear data into the application folder. We open the file, and create a reader that loops through each row and then prints it to the screen. The flag for newline='' is the default as we don't know which line ending we should expect. If you look at the documentation for the csv library, then you'll see this mentioned https://docs.python.org/3/library/csv.html. 
+
+        import csv
+
+        with open('PolarBear_Telemetry_southernBeaufortSea_2009_2011/USGS_WC_eartag_deployments_2009-2011.csv', newline='') as f:
+        reader = csv.reader(f, delimiter=",")
+        next(reader) # skip the header line
+        for row in reader:
+        print(row)
+
+You should be able to run this to confirm the path is correct, and you can read the file with
+
+        python3 parse_csv.py
+
+If that's fine, then we can move onto the next step of putting the data into a database.
 
 We'll use Sqlite3 as it's simple to create and use for our purposes here.
 Go to your terminal and enter this command to create the zero byte text file that will become our database:
 
         touch polar_bear_data.db
 
-Now we need to connect to the database, and run a query to create our table. Notice in the code below, that we need to open, and then close, the connection to the database. Put this into a file called 'create_db.py'. You can find out more about Sqlite3 data types and how they map to python data types at https://docs.python.org/3/library/sqlite3.html?highlight=sqlite3# 
+Now we need to connect to the database, and run a query to create our table. Notice in the code below, that we need to open the connection to the database, and then use a cursor to confirm where we are. We'll also drop the table so that we don't add to the data each time we run the file. That means we can add more tables, and still run the file, and not have the rows repeated.
 
+You can find out more about Sqlite3 data types and how they map to python data types at https://docs.python.org/3/library/sqlite3.html 
+
+Add this code between the 'import csv' line and the line that opens the csv file.
+
+        import csv
         import sqlite3
 
+        # open the connection to the database
         conn = sqlite3.connect('polar_bear_data.db')
-        print("opened db successfully");
+        cur = conn.cursor()
 
-        conn.execute('CREATE TABLE deployments (BearID INTEGER, PTT_ID INTEGER capture_lat REAL, capture_long REAL, Sex TEXT, Age_class TEXT, Ear_applied TEXT)')
+        # drop the data from the table so that if we rerun the file, we don't repeat values
+        conn.execute('DROP TABLE IF EXISTS deployments')
+        print("table dropped successfully");
+        # create table again
+        conn.execute('CREATE TABLE deployments (BearID INTEGER, PTT_ID INTEGER, capture_lat REAL, capture_long REAL, Sex TEXT, Age_class TEXT, Ear_applied TEXT)')
         print("table created successfully");
+
+With the database and table created, we can now turn to the parsing of the spreadsheet. We don't want all of the data, but only specific columns, which means we need to specify which colums we want, and then assign them values for insertion into the database. 
+
+Add this code below the lines parsing the csv. Notice that (a) that we need to 'commit()' the query after it's executed, and that (b) we close the database connection at the very end too.
+
+        # open the file to read it into the database
+        with open('PolarBear_Telemetry_southernBeaufortSea_2009_2011/USGS_WC_eartag_deployments_2009-2011.csv', newline='') as f:
+        reader = csv.reader(f, delimiter=",")
+        next(reader) # skip the header line
+        for row in reader:
+            print(row)
+
+            BearID = int(row[0])
+            PTT_ID = int(row[1])
+            capture_lat = float(row[6])
+            capture_long = float(row[7])
+            Sex = row[9]
+            Age_class = row[10]
+            Ear_applied = row[11]
+
+            cur.execute('INSERT INTO deployments VALUES (?,?,?,?,?,?,?)', (BearID, PTT_ID, capture_lat, capture_long, Sex, Age_class, Ear_applied))
+        print("data parsed successfully");
+        conn.commit()
         conn.close()
 
-With the database and table created, we can now turn to the parsing of the spreadsheet.
+Now that the data is in the database we can build the web front end to see the data.
 
-### Parsing the spreadsheet
-We now get to the spreadsheet, which we want to load into the database. We can do this using the csv library in python. There are also other options for this too, which will be discussed later, in case you have larger datasets to parse. For now, we're just looking for simple options.
+### Building the web components
+We need a landing page to show all of the bears, and then another to show a single bear. The single bear page can later also show the sites of each bear, which are in the other csv file.
+
+We can now start our actual app file, 'polar_bears.py', which needs to be in the main folder. 
 
 
 
@@ -58,79 +109,44 @@ We can confirm this runs by setting a few variables in your environment via the 
 
 You can now view your site at localhost:5000 in the browser. It won't show much other than 'my story goes here', but is enough to confirm that everything works correctly.
 
-Step 3) Rails uses the 'lib' directory to store tasks that manipulate assets in an application. Put the previously downloaded unpacked zip folder 'PolarBear_Telemetry...' here. We will call the csv files later. We'll start with one file, and then look at how we can join the data from two different files to build more interesting pages.
+## Doing the work
+Now that the basics are working, we can see what else is possible in this application.
+We have some basic things here done in a minimal manner. We could probably modify the database operations to pull them together better in one place, and while we have the concept of a 'bear' we haven't created a model of one either.
 
-Step 4) We can now look at generating the components of our application with the command
+Round one should be adding in a second table with data from the 'status.csv' file.
+Round two should be pulling together the code for bears into models and database commands.
+Round three should be exploring what else might be possible.
 
-rails generate scaffold deployments BearID:integer PTT_ID:integer capture_lat:decimal capture_long:decimal Sex Age_class Ear_applied
-This command will create a controller, a model, and associated views for us. As we're also tying the model to a table, it will also generate a migration file to create a table in the database for us.
+### Adding a second table
 
-Step 5) We need to run the migration file to set up the database for us to import the data.
+The file ending with ...status.csv holds details for sightings of bears, so that you could see where and when their radio transmitters were noticed. Again, we're only interested in some columns from the file.
 
-rails db:migrate
-Do the Work
+ deployID INTEGRER, recieved TEXT, latitude REAL, longitude REAL, temperature REAL, deployment_id INTEGER
 
-Work through the three rounds with a partner, or on your own, depending upon your circumstances. Each round should be twelve minutes, followed by a discussion of where you are and what has been working, as well as, what you're working on next.
 
-Now we need to get the polar bear data into our app. We have a number of options with which to do this. We'll start with the CVS class as our data is in this format.
+This will give us a table that references the deployments table via the deployment_id column, and let us show all sightings of a bear on the same page.
 
-Round one should be reading the csv file and getting the data into the application.
-Round two should be displaying the data in a suitable manner.
-Round three should be adding in the data in the 'status.cvs' file to tie together the bears with their current status. See the section further below for details on this part.
-Reading a CSV file
+You can add more details to the parse_csv.py file to read the status.csv file in, and to store the details into a new 'status' table in a similar manner as before.
 
-This is a common approach to working with open data, which is available in this format. There are methods available to read each row, and to parse them into objects for your application using http://ruby-doc.org/stdlib-2.5.2/libdoc/csv/rdoc/CSV.html You can also find more at https://www.sitepoint.com/guide-ruby-csv-library-part/
-
-Step 6) We can start with generating a seed file to move the data. We do that with the command
-
-rails g task bears seed_bears
-This will create a file under lib/tasks/bears.rake which we can now modify to suit our needs.
-
-Step 7) Now, go look at the lib/tasks/bears.rake file in the repo, and copy the code to your file, and you should find it runs ok. Run it with the command
-
-rake bears:seed_bears
-Step 8) Start rails with 'rails server', and go look at http://localhost:3000/deployments to see your list of bears.
-
-Following Individual Bears
-
-You can expand on this by parsing the USGS_WC_eartags_output_files_2009-2011-Status.csv file. Now we can see the travels of each bear since it was tagged. Then you could use the geo-location data to plot these locations on a map.
-
-Step 9) We need to generate another model for the data in the status file. We only generate a model, as we'll use this in our current controller, and in the current 'show.html.erb' file.
-
-rails generate model status deployID:integer recieved:string latitude:decimal longitude:decimal temperature:decimal deployment:references
-This will generate a 'status' model tied to a similar named table in the database, along with a migration file for us to run to create the table. We don't need another controller or views as we'll use the ones we have.
-
-Step 10) Stop the server, and run the migration as before with
-
-rails db:migrate
-This will modify the db/schema.rb file to add the details of the table in our database. We're now ready to import the data from the csv file usig our rake file. To do that we need to write a new task.
-
-Step 11) Open lib/tasks/bears.rake and copy lines 4-23 (the task seed_bears method from your rake file) and pasting this into line 24.
-
-Step 12) Give this task a new method name such as seed_status, and then changing the items you retrieve from each row in the file so that the new names you have for each item match the column names you used in the command is step 9. You'll see that we don't use all of the columns in the csv file.
-
-The data is messy and the parsing will break
+******************************************************
+**** The data is messy and the parsing will break ****
+******************************************************
 
 When you run this new method you will find the parsing breaks due to gaps in the data. It broke because one of the cells had no data, or had the data format different from what the parser was expecting. This is the nature of real-world data. It's not always nice and tidy.
 
-Step 13) You need to modify the rake file some more. You do this you need to 'look up' the ID of each bear in the Deployment table in order to reference this in each 'Status' instance. You can do this with a few lines like this:
+Given we're only parsing this data as an exercise, you can find the broken cell, and then you can either a) delete the row, and then re-run the rake command, or b) write a few lines of code as an 'if/else' statement to check the value of the cell and to either ignore it, or do something else as required to make it work.
+
+For simplicity here, just delete the row and move on so that you get the file imported and the page views showing. You can see the start of this work if you switch to the 'solution' branch of this repository and look at the rake file there. You'll find the solution branch in the drop-down menu at the top of the file listing on the left.
+
+You need to modify the rake file some more. You do this you need to 'look up' the ID of each bear in the Deployment table in order to reference this in each 'Status' instance. You can do this with a few lines like this:
 
     bear_temp = row[0]
     bear = Deployment.where(["BearID = ?", bear_temp])
     
-    Status.create!(
-    deployment_id: bear.id,
+
+    deployment_id: bear_id,
     ...
 We do this in order to ensure that each 'Status' is tied correctly to a 'Deployment'.
-
-Step 14) Run your new rake file with the command (or whatever name you gave the task):
-
-rake bears:seed_status
-Step 15) Given we're only parsing this data as an exercise, you can find the broken cell, and then you can either a) delete the row, and then re-run the rake command, or b) write a few lines of code as an 'if/else' statement to check the value of the cell and to either ignore it, or do something else as required to make it work.
-
-For simplicity here, just delete the row and move on so that you get the file imported and the page views showing. You can see the start of this work if you switch to the 'solution' branch of this repository and look at the rake file there. You'll find the solution branch in the drop-down menu at the top of the file listing on the left.
-
-Step 16) Open views/deployments/show.index.html.erb file and bring in the relavant data from the status table to display here. The key here is to modify the method under 'show' in the controller to query the 'status' table using the DeployID column to reference the BearID and then show this result on the 'show' page for each bear.
 
 This is rough and ready
 
