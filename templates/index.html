@@ -8,7 +8,7 @@
     
     {% for row in rows %}
     <p>Bear: 
-       <b>{{row["BearID"]}}</b> | 
+       <b> <a href={{ url_for('show', deploy_id= row['deploy_id']) }}>{{row["BearID"]}}</a></b> | 
        {{row["PTT_ID"]}} | 
         {{ row["capture_lat"]}} | 
        {{row['capture_long']}}	| 
