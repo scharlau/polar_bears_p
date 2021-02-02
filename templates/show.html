@@ -1,0 +1,29 @@
+<html>
+<head>
+  <title>Individual Polar Bear Tracking</title>
+</head>
+<body>
+ 
+    <h1>Polar Bear Tagged for Tracking</h1>
+    <p>Bear: 
+        <b>{{bear[0]["BearID"]}}</b> | 
+        {{bear[0]["PTT_ID"]}} | 
+         {{ bear[0]["capture_lat"]}} | 
+        {{bear[0]['capture_long']}}	| 
+        {{bear[0]["Sex"]}} |
+         {{ bear[0]["Age_class"]}} |
+        {{bear[0]['Ear_applied']}}	
+     </p>
+     <p>Sightings via Radio Device</p>
+    {% for row in rows %}
+    <p>Bear: 
+       <b>{{row["deployment_id"]}}</b> | 
+       {{row["deployID"]}} | 
+        {{ row["received"]}} | 
+       {{row['latitude']}}	| 
+       {{row["longitude"]}} |
+        {{ row["temperature"]}} 	
+    </p>
+    {% endfor %}
+</body>
+</html>
