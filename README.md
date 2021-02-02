@@ -174,7 +174,7 @@ Given we're only parsing this data as an exercise, you can find the broken cell,
 
 For simplicity here, just delete the row and move on so that you get the file imported and the page views showing. You can see the start of this work if you switch to the 'solution' branch of this repository and look at the rake file there. You'll find the solution branch in the drop-down menu at the top of the file listing on the left.
 
-You need to modify the rake file some more. You do this you need to 'look up' the ID of each bear in the Deployment table in order to reference this in each 'Status' instance. You can do this with a few lines like this:
+You need to modify the parsing file some more. You do this you need to 'look up' the ID of each bear in the Deployment table in order to reference this in each 'Status' instance. You can do this with a few lines like this:
 
         bear_temp = row[0]
         print(bear_temp)
