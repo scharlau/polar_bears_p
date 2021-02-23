@@ -15,12 +15,13 @@ We are not using all of the columns that are here. We could use all of the data,
 
 Step 2) We can start developing our application to display the data. Create a new project folder called 'polar_bears' and then cd into the folder via the terminal and execute these commands:
 
-        pyenv local 3.7.0 # this sets the local version of python to 3.7.0
+        pyenv local 3.7.9 # this sets the local version of python to 3.7.9
         python3 -m venv .venv # this creates the virtual environment for you
         source .venv/bin/activate # this activates the virtual environment
         pip install --upgrade pip [ this is optional]  # this installs pip, and upgrades it if required.
 
 We will use Flask (https://flask.palletsprojects.com/en/1.1.x/) as our web framework for the application. We install that with 
+        
         pip install flask
 
 And that will install flask with its associated dependencies. We can now start to build the application.
@@ -140,7 +141,8 @@ Create a 'templates' folder, and put an index.html file in there. You can put th
         </body></html>
 
 We can confirm this runs by setting a few variables in your environment via the terminal (this assumes you're either using Linus or MacOS)
-        export FLASK_APP=story.py
+        
+        export FLASK_APP=polar_bears.py
         export FLASK_ENV=development
         python3 -m flask run
 
